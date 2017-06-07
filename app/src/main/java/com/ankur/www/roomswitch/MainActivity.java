@@ -38,12 +38,15 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
         initialiseSwitch();
         ((Button)findViewById(R.id.SimpleTransition)).setOnClickListener(this);
         ((Button)findViewById(R.id.switchOffLED)).setOnClickListener(this);
+        ((Button)findViewById(R.id.NightMode)).setOnClickListener(this);
         RedSeek =(SeekBar)findViewById(R.id.RedSeekBar);
         BlueSeek = (SeekBar)findViewById(R.id.BlueSeekBar);
         GreenSeek = (SeekBar)findViewById(R.id.GreenSeekBar);
         RedSeek.setOnSeekBarChangeListener(this);
         GreenSeek.setOnSeekBarChangeListener(this);
         BlueSeek.setOnSeekBarChangeListener(this);
+        VisulizerLED visulizerLED = new VisulizerLED();
+        visulizerLED.start();
     }
 
     void initialiseSwitch(){
@@ -117,31 +120,14 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
 
     public void onClick(View v){
         switch (v.getId()) {
-            /*case R.id.FanOnBtn:
-                new Thread(FanOn).start();
-                break;
-            case R.id.FanOffBtn:
-                new Thread(FanOff).start();
-                break;
-            case R.id.TubelightOnBtn:
-                new Thread(TubelightOn).start();
-                break;
-            case R.id.TubelightOffBtn:
-                new Thread(TubelightOff).start();
-                break;
-            case R.id.BulbOnBtn:
-                new Thread(BulbOn).start();
-                break;
-            case R.id.BulbOffBtn:
-                new Thread(BulbOff).start();
-                break;*/
             case R.id.SimpleTransition:
                 new Thread(SimpleTransition).start();
                 break;
             case R.id.switchOffLED:
                 new Thread(SwitchOffLED).start();
                 break;
-
+            case R.id.NightMode:
+                new Thread(NightMode).start();
         }
     }
 
@@ -160,42 +146,42 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
     Runnable FanOn = new Runnable() {
         @Override
         public void run() {
-            messageToClient("Fan,0");
+            messageToClient("Fan,1");
         }
     };
 
     Runnable FanOff = new Runnable() {
         @Override
         public void run() {
-            messageToClient("Fan,1");
+            messageToClient("Fan,0");
         }
     };
 
     Runnable TubelightOn = new Runnable() {
         @Override
         public void run() {
-            messageToClient("Tubelight,0");
+            messageToClient("Tubelight,1");
         }
     };
 
     Runnable TubelightOff = new Runnable() {
         @Override
         public void run() {
-            messageToClient("Tubelight,1");
+            messageToClient("Tubelight,0");
         }
     };
 
     Runnable BulbOn = new Runnable() {
         @Override
         public void run() {
-            messageToClient("Bulb,0");
+            messageToClient("Bulb,1");
         }
     };
 
     Runnable BulbOff = new Runnable() {
         @Override
         public void run() {
-            messageToClient("Bulb,1");
+            messageToClient("Bulb,0");
         }
     };
 
@@ -203,6 +189,13 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
         @Override
         public void run() {
             messageToClient("SimpleTransition");
+        }
+    };
+
+    Runnable NightMode = new Runnable() {
+        @Override
+        public void run() {
+            messageToClient("NightMode");
         }
     };
 
