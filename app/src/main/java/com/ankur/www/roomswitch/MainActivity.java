@@ -1,20 +1,23 @@
 package com.ankur.www.roomswitch;
 
 import android.app.Activity;
+import android.media.audiofx.Visualizer;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.Switch;
+import android.widget.TextView;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
 
-public class MainActivity extends Activity implements View.OnClickListener, SeekBar.OnSeekBarChangeListener{
+public class MainActivity extends Activity implements View.OnClickListener, SeekBar.OnSeekBarChangeListener, Visualizer.OnDataCaptureListener{
 
     Switch fanSwitch;
     Switch tubelightSwitch;
@@ -22,6 +25,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
     SeekBar RedSeek;
     SeekBar BlueSeek;
     SeekBar GreenSeek;
+    public static Visualizer visualizer;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,9 +49,69 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
         RedSeek.setOnSeekBarChangeListener(this);
         GreenSeek.setOnSeekBarChangeListener(this);
         BlueSeek.setOnSeekBarChangeListener(this);
-        VisulizerLED visulizerLED = new VisulizerLED();
-        visulizerLED.start();
+        //visulizerLED();
     }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        visulizerLED();
+        //setupVisualizerFxAndUI();
+    }
+
+
+    void visulizerLED() {
+        if (visualizer==null) {
+            visualizer = new Visualizer(0);
+            visualizer.setCaptureSize(4);
+            visualizer.setDataCaptureListener(this, Visualizer.getMaxCaptureRate(), false, true);
+            //visualizer.getFft(sample);
+            visualizer.setEnabled(true);
+        }
+    }
+
+    @Override
+    public void onWaveFormDataCapture(Visualizer visualizer, byte[] waveform, int samplingRate) {    }
+
+    @Override
+    public void onFftDataCapture(Visualizer visualizer, byte[] fft, int samplingRate) {
+        try {
+            //visualizer.getFft(fft);
+            int x = fft[2];
+            int y = fft[0];
+            int z = fft[3];
+            if (x <=0) x *=-1;
+            if (y <=0) y *=-1;
+            if (z <=0) z *=-1;
+
+            //calibration
+            //x = Math.round((((float)x)/256)*50);  //r
+            //y = Math.round((((float)y)/256)*50);  //g
+            z = Math.round((((float)x)/256)*100); //b
+
+            final String a = Integer.toString(x);
+            final String b = Integer.toString(y);
+            final String c = Integer.toString(z);
+
+            //a = Integer.toString(x) + "\t" + Integer.toString(y) + "\t" + Integer.toString(z);
+
+            ((TextView) findViewById(R.id.VisualizationX)).setText(Integer.toString(x));
+            ((TextView) findViewById(R.id.VisualizationY)).setText(Integer.toString(y));
+            ((TextView) findViewById(R.id.VisualizationZ)).setText(Integer.toString(z));
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    messageToClient("6,"+a);
+                    messageToClient("10,"+b);
+                    messageToClient("11,"+c);
+                }
+            }).start();
+        }
+        catch (Exception e){
+            ((TextView) findViewById(R.id.VisualizationX)).setText(e.getMessage());
+        }
+    }
+
 
     void initialiseSwitch(){
         fanSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
