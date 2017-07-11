@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.media.audiofx.Visualizer;
 import android.os.Bundle;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
@@ -22,6 +21,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
     Switch fanSwitch;
     Switch tubelightSwitch;
     Switch bulbSwitch;
+    Switch musicMode;
     SeekBar RedSeek;
     SeekBar BlueSeek;
     SeekBar GreenSeek;
@@ -39,6 +39,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
         fanSwitch = (Switch)findViewById(R.id.FanSwitch);
         tubelightSwitch = (Switch)findViewById(R.id.TubelightSwitch);
         bulbSwitch = (Switch)findViewById(R.id.BulbSwitch);
+        musicMode = (Switch)findViewById(R.id.MusicMode);
         initialiseSwitch();
         ((Button)findViewById(R.id.SimpleTransition)).setOnClickListener(this);
         ((Button)findViewById(R.id.switchOffLED)).setOnClickListener(this);
@@ -49,18 +50,24 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
         RedSeek.setOnSeekBarChangeListener(this);
         GreenSeek.setOnSeekBarChangeListener(this);
         BlueSeek.setOnSeekBarChangeListener(this);
-        //visulizerLED();
+        //visulizerLEDStart();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        visulizerLED();
-        //setupVisualizerFxAndUI();
+        //visulizerLEDStart();
     }
 
 
-    void visulizerLED() {
+    void  visualizerLEDStop(){
+        if (visualizer!=null){
+            visualizer.release();
+            visualizer = null;
+        }
+    }
+
+    void visulizerLEDStart() {
         if (visualizer==null) {
             visualizer = new Visualizer(0);
             visualizer.setCaptureSize(4);
@@ -77,9 +84,9 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
     public void onFftDataCapture(Visualizer visualizer, byte[] fft, int samplingRate) {
         try {
             //visualizer.getFft(fft);
-            int x = fft[2];
-            int y = fft[0];
-            int z = fft[3];
+            int x = fft[3];  //3 when capture size = 4
+            int y = fft[2];  //2
+            int z = fft[0];  //0
             if (x <=0) x *=-1;
             if (y <=0) y *=-1;
             if (z <=0) z *=-1;
@@ -87,7 +94,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
             //calibration
             //x = Math.round((((float)x)/256)*50);  //r
             //y = Math.round((((float)y)/256)*50);  //g
-            z = Math.round((((float)x)/256)*100); //b
+            //z = Math.round((((float)x)/256)*100); //b
 
             final String a = Integer.toString(x);
             final String b = Integer.toString(y);
@@ -138,6 +145,13 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked==true) new Thread(BulbOn).start();
                 else new Thread(BulbOff).start();
+            }
+        });
+        musicMode.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked==true) visulizerLEDStart();
+                else visualizerLEDStop();
             }
         });
     }
