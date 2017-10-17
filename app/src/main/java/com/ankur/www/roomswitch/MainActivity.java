@@ -70,7 +70,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
     void visulizerLEDStart() {
         if (visualizer==null) {
             visualizer = new Visualizer(0);
-            visualizer.setCaptureSize(4);
+            visualizer.setCaptureSize(8);//4
             visualizer.setDataCaptureListener(this, Visualizer.getMaxCaptureRate(), false, true);
             //visualizer.getFft(sample);
             visualizer.setEnabled(true);
@@ -84,17 +84,33 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
     public void onFftDataCapture(Visualizer visualizer, byte[] fft, int samplingRate) {
         try {
             //visualizer.getFft(fft);
-            int x = fft[3];  //3 when capture size = 4
-            int y = fft[2];  //2
-            int z = fft[0];  //0
+            int x = fft[4];  //3 when capture size = 4
+            int y = fft[6];  //2
+            int z = fft[2];  //0
             if (x <=0) x *=-1;
             if (y <=0) y *=-1;
             if (z <=0) z *=-1;
 
             //calibration
             //x = Math.round((((float)x)/256)*50);  //r
-            //y = Math.round((((float)y)/256)*50);  //g
+            //y = Math.round((((float)y)/2));  //g
             //z = Math.round((((float)x)/256)*100); //b
+
+            //noise removal
+            int noise = 5;
+            if (x<noise)
+            {
+                x=0;
+            }
+            if (y<noise)
+            {
+                y=0;
+            }
+            if (z<noise)
+            {
+                z=0;
+            }
+
 
             final String a = Integer.toString(x);
             final String b = Integer.toString(y);
@@ -224,14 +240,14 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
     Runnable FanOn = new Runnable() {
         @Override
         public void run() {
-            messageToClient("Fan,1");
+            messageToClient("Fan,0");
         }
     };
 
     Runnable FanOff = new Runnable() {
         @Override
         public void run() {
-            messageToClient("Fan,0");
+            messageToClient("Fan,1");
         }
     };
 
