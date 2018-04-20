@@ -3,8 +3,10 @@ package com.ankur.www.roomswitch;
 import android.app.Activity;
 import android.content.Context;
 import android.os.Debug;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Switch;
 
 import java.io.BufferedReader;
 import java.io.DataInputStream;
@@ -31,22 +33,14 @@ public  class StateSync extends Thread {
             //InputStream inputStream = client.getInputStream();
             OutputStream outputStream = client.getOutputStream();
             InputStreamReader in = new InputStreamReader(client.getInputStream());
+            //DataInputStream in = new DataInputStream(client.getInputStream());
             DataOutputStream out = new DataOutputStream(outputStream);
-            out.writeBytes("State");
+            out.writeBytes("State\n");
             out.flush();
             outputStream.flush();
-            //BufferedReader reader = new BufferedReader(in);
-            String x = "";
-            int i;
-            while ((i = in.read())!=-1)
-            {
-                x += (char)i;
-            }
-
-            //String rawMsg = reader.readLine();
-            String rawMsg = x;
-            //reader.close();
-            //inputStream.close();
+            BufferedReader reader = new BufferedReader(in);
+            String rawMsg = reader.readLine();
+            Log.d("State",rawMsg);
             outputStream.close();
             client.close();
             processRawMsg(rawMsg);
@@ -58,49 +52,49 @@ public  class StateSync extends Thread {
 
     private void processRawMsg(String rawMsg) {
         String[] raws = rawMsg.split(",");
-
-        if (raws[0]=="1"){
-            T = true;
+        Log.d("raws",raws[0]);
+        if (raws[0].matches("1")){
+            this.T = true;
         }
-        if (raws[1]=="1"){
-            B = true;
+        this.B = true;
+        if (raws[1].matches("1")){
+            this.B = false;
         }
-        if (raws[2]=="1"){
-            F = true;
+        this.F = false;
+        if (raws[2].matches("1")){
+            this.F = true;
         }
-
-        //now change switch accordingly
     }
 
-    public void updateSwitch(Context context, Button tubelight,Button bulb,Button fan){
+    public Boolean[] updateSwitch(Context context, final Switch tubelight, Switch bulb, Switch fan){
         Runnable r = new Runnable() {
             @Override
             public void run() {
                 getStates();
             }
         };
-        new Thread(r).start();
+        Thread t = new Thread(r);
+        try{
+            t.start();
+            t.join();
+            //t.start();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
 
-        final Button Tube = tubelight;
-        final Button Bulb = bulb;
-        final Button Fan = fan;
+        Boolean[] x = {this.T,this.B,this.F};
+        return x;
+        /*
+        final Switch Tube = tubelight;
+        final Switch Bulb = bulb;
+        final Switch Fan = fan;
         ((Activity)context).runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Tube.setActivated(T);
+                tubelight.setChecked(T);
+                fan.setChecked(F);
+                bulb.setChecked(B);
             }
-        });
-        ((Activity)context).runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                Bulb.setActivated(B);
-            }
-        });
-        ((Activity)context).runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                Fan.setActivated(F);
-            }
-        });
+        });*/
     }
 }

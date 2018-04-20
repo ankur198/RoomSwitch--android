@@ -7,6 +7,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
@@ -35,6 +36,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
     SeekBar RedSeek;
     SeekBar BlueSeek;
     SeekBar GreenSeek;
+    Button DJ;
     public  static  String ip;
     public static Visualizer visualizer;
     @Override
@@ -51,6 +53,8 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
         tubelightSwitch = (Switch)findViewById(R.id.TubelightSwitch);
         bulbSwitch = (Switch)findViewById(R.id.BulbSwitch);
         musicMode = (Switch)findViewById(R.id.MusicMode);
+        DJ = (Button)findViewById(R.id.btnDJ);
+        DJ.setOnClickListener(this);
         initialiseSwitch();
         ((Button)findViewById(R.id.SimpleTransition)).setOnClickListener(this);
         ((Button)findViewById(R.id.switchOffLED)).setOnClickListener(this);
@@ -66,12 +70,12 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
         //visulizerLEDStart();
 
         checkOnWifi();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                getStates();
-            }
-        }).start();
+        //new Thread(new Runnable() {
+        //    @Override
+        //    public void run() {
+        //        getStates();
+        //    }
+        //}).start();
     }
 
     private  void getStates()
@@ -118,7 +122,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
         super.onResume();
         //visulizerLEDStart();
         ip = ((EditText)findViewById(R.id.IP)).getText().toString();
-        //startSyncingStates();
+        startSyncingStates();
     }
 
     @Override
@@ -144,7 +148,11 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
             @Override
             public void onTick(long l) {
                 StateSync stateSync = new StateSync();
-                stateSync.updateSwitch(MainActivity.this,tubelightSwitch,bulbSwitch,fanSwitch);
+                Boolean[] vals = stateSync.updateSwitch(MainActivity.this,tubelightSwitch,bulbSwitch,fanSwitch);
+                Log.d("Tubelight",vals[0].toString());
+                tubelightSwitch.setChecked(vals[0]);
+                bulbSwitch.setChecked(vals[1]);
+                fanSwitch.setChecked(vals[2]);
             }
 
             @Override
@@ -301,7 +309,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
     @Override
     public void onStopTrackingTouch(SeekBar seekBar) {
         if (seekBar == FanSpeed){
-            final  String m = "FanSpeed" + "," + Integer.toString(seekBar.getProgress());
+            final  String m = "FanSpeed" + "," + Integer.toString(seekBar.getProgress()*5);
             Runnable r = new Runnable() {
                 @Override
                 public void run() {
@@ -322,6 +330,10 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
                 break;
             case R.id.NightMode:
                 new Thread(NightMode).start();
+                break;
+            case R.id.btnDJ:
+                new Thread(DJEffect).start();
+                break;
         }
     }
 
@@ -340,14 +352,14 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
     Runnable FanOn = new Runnable() {
         @Override
         public void run() {
-            messageToClient("Fan,0");
+            messageToClient("Fan,1");
         }
     };
 
     Runnable FanOff = new Runnable() {
         @Override
         public void run() {
-            messageToClient("Fan,1");
+            messageToClient("Fan,0");
         }
     };
 
@@ -368,14 +380,14 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
     Runnable BulbOn = new Runnable() {
         @Override
         public void run() {
-            messageToClient("Bulb,1");
+            messageToClient("Bulb,0");
         }
     };
 
     Runnable BulbOff = new Runnable() {
         @Override
         public void run() {
-            messageToClient("Bulb,0");
+            messageToClient("Bulb,1");
         }
     };
 
@@ -399,6 +411,51 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
             messageToClient("6,0");
             messageToClient("10,0");
             messageToClient("11,0");
+        }
+    };
+
+    int djOn=0;
+    CountDownTimer t = new CountDownTimer(Long.MAX_VALUE,500) {
+        @Override
+        public void onTick(long l) {
+            if(djOn==0)
+            {
+                djOn=1;
+                new Thread(FanOn).start();
+                new Thread(BulbOff).start();
+            }
+            else
+            {
+                djOn=0;
+                new Thread(FanOff).start();
+                new Thread(BulbOn).start();
+            }
+        }
+
+        @Override
+        public void onFinish() {
+
+        }
+    };
+    boolean dj = false;
+    Runnable DJEffect = new Runnable() {
+        @Override
+        public void run() {
+
+            if (dj){
+                try{
+                    t.cancel();
+                    dj = false;
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+                return;
+            }
+            else{
+                t.start();
+                dj = true;
+            }
+
         }
     };
 }
