@@ -1,8 +1,12 @@
 package com.ankur.www.roomswitch;
 
 import android.app.Activity;
+import android.content.Context;
 import android.media.audiofx.Visualizer;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
@@ -11,20 +15,27 @@ import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import java.io.BufferedReader;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 
 public class MainActivity extends Activity implements View.OnClickListener, SeekBar.OnSeekBarChangeListener, Visualizer.OnDataCaptureListener{
 
+    CountDownTimer countDownTimerForStateSync;
+
     Switch fanSwitch;
     Switch tubelightSwitch;
     Switch bulbSwitch;
     Switch musicMode;
+    SeekBar FanSpeed;
     SeekBar RedSeek;
     SeekBar BlueSeek;
     SeekBar GreenSeek;
+    public  static  String ip;
     public static Visualizer visualizer;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,27 +55,104 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
         ((Button)findViewById(R.id.SimpleTransition)).setOnClickListener(this);
         ((Button)findViewById(R.id.switchOffLED)).setOnClickListener(this);
         ((Button)findViewById(R.id.NightMode)).setOnClickListener(this);
+        FanSpeed = (SeekBar)findViewById(R.id.seekBarFanSpeed);
         RedSeek =(SeekBar)findViewById(R.id.RedSeekBar);
         BlueSeek = (SeekBar)findViewById(R.id.BlueSeekBar);
         GreenSeek = (SeekBar)findViewById(R.id.GreenSeekBar);
+        FanSpeed.setOnSeekBarChangeListener(this);
         RedSeek.setOnSeekBarChangeListener(this);
         GreenSeek.setOnSeekBarChangeListener(this);
         BlueSeek.setOnSeekBarChangeListener(this);
         //visulizerLEDStart();
+
+        checkOnWifi();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                getStates();
+            }
+        }).start();
+    }
+
+    private  void getStates()
+    {
+        try {
+            String ip = MainActivity.ip;
+            Socket client = new Socket(ip,1337);
+            //InputStream inputStream = client.getInputStream();
+            OutputStream outputStream = client.getOutputStream();
+            InputStreamReader in = new InputStreamReader(client.getInputStream());
+            //DataInputStream in = new DataInputStream(client.getInputStream());
+            DataOutputStream out = new DataOutputStream(outputStream);
+            out.writeBytes("State\n");
+            out.flush();
+            outputStream.flush();
+            BufferedReader reader = new BufferedReader(in);
+            String x = reader.readLine();
+            int i;
+
+
+            //String rawMsg = reader.readLine();
+            //String rawMsg = in.readUTF();
+            //reader.close();
+            //inputStream.close();
+            outputStream.close();
+            client.close();
+            //processRawMsg(rawMsg);
+        }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    private void checkOnWifi() {
+        ConnectivityManager connectivityManager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo mwifi = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+        if(mwifi.isConnected()==false){
+            ((EditText)findViewById(R.id.IP)).setText("0.0.0.0");
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         //visulizerLEDStart();
+        ip = ((EditText)findViewById(R.id.IP)).getText().toString();
+        //startSyncingStates();
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        try{
+            countDownTimerForStateSync.cancel();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
 
     void  visualizerLEDStop(){
         if (visualizer!=null){
             visualizer.release();
             visualizer = null;
         }
+    }
+
+    void startSyncingStates()
+    {
+        countDownTimerForStateSync = new CountDownTimer(Long.MAX_VALUE,1000) {
+            @Override
+            public void onTick(long l) {
+                StateSync stateSync = new StateSync();
+                stateSync.updateSwitch(MainActivity.this,tubelightSwitch,bulbSwitch,fanSwitch);
+            }
+
+            @Override
+            public void onFinish() {
+                start();
+            }
+        };
+        countDownTimerForStateSync.start();
     }
 
     void visulizerLEDStart() {
@@ -172,6 +260,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
         });
     }
 
+
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         if (seekBar==RedSeek){
@@ -210,7 +299,18 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
     public void onStartTrackingTouch(SeekBar seekBar) {}
 
     @Override
-    public void onStopTrackingTouch(SeekBar seekBar) {}
+    public void onStopTrackingTouch(SeekBar seekBar) {
+        if (seekBar == FanSpeed){
+            final  String m = "FanSpeed" + "," + Integer.toString(seekBar.getProgress());
+            Runnable r = new Runnable() {
+                @Override
+                public void run() {
+                    messageToClient(m);
+                }
+            };
+            new Thread(r).start();
+        }
+    }
 
     public void onClick(View v){
         switch (v.getId()) {
@@ -227,7 +327,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Seek
 
     void messageToClient(String message){
         try {
-            String ip = ((EditText)findViewById(R.id.IP)).getText().toString();
+            ip = ((EditText)findViewById(R.id.IP)).getText().toString();
             Socket client = new Socket(ip,1337);
             OutputStream outputStream = client.getOutputStream();
             DataOutputStream out = new DataOutputStream(outputStream);
